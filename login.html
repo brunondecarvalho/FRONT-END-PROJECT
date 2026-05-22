@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Esfiharia Premium</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <button onclick="window.location.href='index.html'" class="back-btn" style="position: absolute; top: 20px; left: 20px; font-size: 1.2rem; background: var(--panel-color); box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 10px 15px; border-radius: 12px; font-weight: bold;">❮ Voltar</button>
+        
+        <div class="auth-card">
+            <h2 class="logo" style="margin-bottom: 5px; font-size: 2rem;">Esfiharia</h2>
+            <p>Acesse sua conta para pedir</p>
+            
+            <input type="email" id="email" placeholder="Seu E-mail" required>
+            <input type="password" id="password" placeholder="Sua Senha" required>
+            
+            <button class="btn" onclick="login()">Entrar</button>
+            
+            <div class="auth-divider">ou</div>
+            
+            <button class="btn btn-secondary" onclick="window.location.href='cadastro.html'">Criar Nova Conta</button>
+        </div>
+    </div>
+    <script src="js/auth.js"></script>
+</body>
+</html>

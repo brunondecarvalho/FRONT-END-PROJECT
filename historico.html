@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - Esfiharia</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <button onclick="window.location.href='index.html'" class="back-btn">❮</button>
+            <div class="logo">Pedidos</div>
+        </div>
+        <button onclick="logout()" style="background:none; border:none; color:var(--primary-red); font-weight:bold; cursor:pointer;">Sair</button>
+    </header>
+
+    <main class="container">
+        <div id="orders-container">Carregando seus pedidos...</div>
+    </main>
+
+    <footer>
+        <div class="footer-bottom" style="border-top: none;">
+            <p class="god-phrase">"Consagre ao Senhor tudo o que você faz..." - Provérbios 16:3</p>
+        </div>
+    </footer>
+
+    <script src="js/auth.js"></script>
+    <script>
+        const user = checkAuth();
+        
+        function getStatusVisual(status) {
+            switch(status) {
+                case 'pendente': return { class: 'bg-pendente', text: 'Pendente' };
+                case 'preparando': return { class: 'bg-preparando', text: 'Preparando' };
+                case 'em_rota': return { class: 'bg-rota', text: 'Em Rota' };
+                case 'pronto': return { class: 'bg-rota', text: 'Pronto p/ Retirar' };
+                case 'concluido': return { class: 'bg-concluido', text: 'Concluído' };
+                default: return { class: '', text: status };
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const res = await fetch(`${API_URL}/orders?userId=${user.id}`);
+                const orders = await res.json();
+                
+                document.getElementById('orders-container').innerHTML = orders.length === 0 
+                    ? '<p style="text-align:center; padding:40px;">Você ainda não tem pedidos.</p>' 
+                    : orders.reverse().map(o => {
+                        const visual = getStatusVisual(o.status);
+                        return `
+                        <div class="order-item">
+                            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:10px;">
+                                <strong>Pedido #${o.id.slice(-4)}</strong>
+                                <span class="status-badge ${visual.class}">${visual.text}</span>
+                            </div>
+                            <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.8;">
+                                <p><strong>Data:</strong> ${o.date}</p>
+                                <p><strong>Tipo:</strong> ${o.orderType.toUpperCase()} - ${o.address}</p>
+                            </div>
+                            <div style="margin-top:15px; font-weight:900; font-size:1.2rem; color:var(--primary-red); text-align:right;">
+                                Total: R$ ${o.total.toFixed(2)}
+                            </div>
+                        </div>`
+                    }).join('');
+            } catch(e) { document.getElementById('orders-container').innerHTML = 'Erro ao carregar.'; }
+        }
+        loadHistory();
+    </script>
+</body>
+</html>

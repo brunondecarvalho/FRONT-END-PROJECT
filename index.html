@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esfiharia Premium</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Esfiharia</div>
+        <div id="user-info"></div>
+    </header>
+
+    <main class="container">
+        <div id="store-status" class="status-bar">Verificando...</div>
+
+        <div class="category-scroll">
+            <button class="category-btn active">Todas</button>
+            <button class="category-btn">Salgadas</button>
+            <button class="category-btn">Doces</button>
+            <button class="category-btn">Bebidas</button>
+        </div>
+
+        <div id="product-grid" class="product-grid"></div>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div>
+                <h4>Esfiharia Premium</h4>
+                <p>Ingredientes selecionados, massa artesanal e assadas na hora. A melhor experiência em esfihas.</p>
+            </div>
+            <div>
+                <h4>Atendimento</h4>
+                <p>📞 WhatsApp: (11) 98765-4321</p>
+                <p>📍 Av. das Nações Unidas, 1234 - Centro</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="god-phrase">"Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos." - Provérbios 16:3</p>
+            <p class="copyright">&copy; 2026 Esfiharia Premium. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <div id="cart-btn" class="cart-floating-btn" style="display: none;" onclick="toggleModal('cart-modal', true)">
+        <span>🛒 Finalizar Pedido</span>
+        <span id="cart-count-info">0 itens</span>
+    </div>
+
+    <div id="cart-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+                <h3 style="color:var(--primary-red); font-size: 1.4rem;">Seu Pedido</h3>
+                <button onclick="toggleModal('cart-modal', false)" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-main);">✕</button>
+            </div>
+            
+            <div id="cart-items-list" style="margin-bottom:20px; background:var(--panel-color); padding:15px; border-radius:12px; border:1px solid var(--border-color);"></div>
+            
+            <label style="font-weight:bold; margin-top:10px; display:block;">Observações (Opcional)</label>
+            <textarea id="observation" placeholder="Ex: Tirar cebola..."></textarea>
+
+            <label style="font-weight:bold; margin-top:10px; display:block;">Como deseja receber?</label>
+            <select id="order-type">
+                <option value="entrega">Motoboy (Entregar no meu Endereço)</option>
+                <option value="retirada">Vou Retirar na Loja</option>
+            </select>
+
+            <div id="address-container">
+                <label style="font-weight:bold; display:block;">Endereço Completo</label>
+                <input type="text" id="address" placeholder="Rua, Número, Bairro">
+            </div>
+
+            <label style="font-weight:bold; margin-top:10px; display:block;">Forma de Pagamento</label>
+            <select id="pay-method">
+                <option value="pix">PIX Automático (Mais Rápido)</option>
+                <option value="cartao">Máquininha de Cartão na hora</option>
+                <option value="dinheiro">Dinheiro Físico na hora</option>
+            </select>
+
+            <button class="btn" style="margin-top:20px; font-size:1.1rem; padding:16px;" onclick="processOrder()">Confirmar Pedido</button>
+        </div>
+    </div>
+
+    <div id="pix-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="color:var(--primary-red); margin-bottom:10px;">Pagamento PIX</h3>
+            <p>1. Copie a chave e faça o pagamento no seu app.</p>
+            <div style="background:var(--bg-color); padding:15px; border-radius:12px; margin:15px 0; border:2px dashed var(--primary-red);">
+                Chave PIX: <strong id="pix-key" style="font-size:1.1rem;">...</strong>
+            </div>
+            <p style="font-size:1.2rem; margin-bottom:20px;">Total a pagar: <strong id="pix-amount" style="color:var(--primary-red);">R$ 0,00</strong></p>
+            <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;">2. Após pagar, clique abaixo para nos enviar o comprovante no WhatsApp.</p>
+            <button class="btn" style="background-color: #25D366;" onclick="confirmPixPayment()">📱 Enviar Comprovante</button>
+            <button class="btn btn-secondary" style="margin-top:10px;" onclick="toggleModal('pix-modal', false)">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

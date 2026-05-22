@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Esfiharia Premium</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <button onclick="window.location.href='login.html'" class="back-btn" style="position: absolute; top: 20px; left: 20px; font-size: 1.2rem; background: var(--panel-color); box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 10px 15px; border-radius: 12px; font-weight: bold;">❮ Voltar</button>
+        
+        <div class="auth-card">
+            <h2 class="logo" style="margin-bottom: 5px; font-size: 1.8rem; color: var(--text-main);">Criar Conta</h2>
+            <p>Rápido e fácil para você pedir</p>
+            
+            <input type="text" id="name" placeholder="Seu Nome Completo" required>
+            <input type="email" id="email" placeholder="Seu melhor E-mail" required>
+            <input type="text" id="phone" placeholder="Celular (WhatsApp)" required>
+            <input type="password" id="password" placeholder="Crie uma Senha" required>
+            
+            <button class="btn" onclick="register()">Cadastrar</button>
+            
+            <p style="margin-top: 20px; font-size: 0.95rem; color: var(--text-muted);">
+                Já tem conta? <a href="login.html" style="color: var(--primary-red); font-weight: bold; text-decoration: none;">Faça Login</a>
+            </p>
+        </div>
+    </div>
+    <script src="js/auth.js"></script>
+</body>
+</html>

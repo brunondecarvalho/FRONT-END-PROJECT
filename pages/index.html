@@ -30,7 +30,7 @@
     <footer>
         <div class="footer-content">
             <div>
-                <h4>Esfiharia Premium</h4>
+                <h4>Donna Esfiha</h4>
                 <p>Ingredientes selecionados, massa artesanal e assadas na hora. A melhor experiência em esfihas.</p>
             </div>
             <div>
@@ -42,7 +42,7 @@
         <div class="footer-bottom">
             <p class="god-phrase">"Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos." -
                 Provérbios 16:3</p>
-            <p class="copyright">&copy; 2026 Esfiharia Premium. Todos os direitos reservados.</p>
+            <p class="copyright">&copy; 2026 Donna Esfiha. Todos os direitos reservados.</p>
         </div>
     </footer>
 
@@ -73,9 +73,14 @@
             </select>
 
             <div id="address-container">
-                <label style="font-weight:bold; display:block;">Endereço Completo</label>
-                <input type="text" id="address" placeholder="Rua, Número, Bairro">
-            </div>
+    <label style="font-weight:bold; display:block; margin-bottom: 5px;">Selecione o Endereço de Entrega</label>
+    <select id="address-select">
+        <option value="">Carregando seus endereços...</option>
+    </select>
+    <small style="display:block; margin-top: -5px; margin-bottom: 15px;">
+        <a href="cadastro-endereco.html" style="color: var(--primary-red); font-weight: bold; text-decoration: none;">+ Cadastrar novo endereço</a>
+    </small>
+</div>
 
             <label style="font-weight:bold; margin-top:10px; display:block;">Forma de Pagamento</label>
             <select id="pay-method">

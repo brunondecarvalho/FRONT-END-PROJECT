@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Endereço - Donna Esfiha</title>
+    <link rel="stylesheet" href="../style/style.css">
+</head>
+
+<body>
+    <header>
+        <div class="header-left">
+            <button onclick="window.location.href='index.html'" class="back-btn" title="Voltar">❮</button>
+            <div class="logo">Esfiharia</div>
+        </div>
+        <div id="user-info"></div>
+    </header>
+
+    <main class="container">
+
+        <div class="order-card" style="max-width: 600px; margin: 30px auto; padding: 30px;">
+            <h3
+                style="color: var(--text-main); margin-bottom: 15px; font-size: 1.4rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                📍 Meus Endereços Cadastrados
+            </h3>
+            <div id="addresses-list-container">
+                <p style="text-align:center; color:var(--text-muted); padding:10px;">Carregando seus endereços...</p>
+            </div>
+        </div>
+        <div class="order-card" style="max-width: 600px; margin: 30px auto; padding: 30px;">
+            <h2 style="color: var(--primary-red); margin-bottom: 5px; font-size: 1.6rem;">Cadastrar Novo Endereço</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px; font-size: 0.95rem;">Preencha os dados abaixo para
+                entrega.</p>
+
+            <form id="address-form" onsubmit="saveAddress(event)">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">Rua / Logradouro *</label>
+                        <input type="text" id="address" placeholder="Ex: Av. das Nações Unidas" required>
+                    </div>
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">Número *</label>
+                        <input type="number" id="number" placeholder="Ex: 123" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">Bairro *</label>
+                        <input type="text" id="neighborhood" placeholder="Ex: Centro" required>
+                    </div>
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">CEP (Apenas números)
+                            *</label>
+                        <input type="text" id="cep" placeholder="Ex: 17120000" maxlength="8" required>
+                    </div>
+                </div>
+
+                <label style="font-weight:bold; display:block; margin-bottom: 5px;">Complemento</label>
+                <input type="text" id="complement" placeholder="Ex: Bloco 2, Apt 42">
+
+                <label style="font-weight:bold; display:block; margin-bottom: 5px;">Ponto de Referência</label>
+                <input type="text" id="landmark" placeholder="Ex: Próximo ao mercado Central">
+
+                <button type="submit" class="btn" style="margin-top: 15px; font-size: 1.1rem; padding: 16px;">
+                    💾 Salvar Endereço
+                </button>
+            </form>
+        </div>
+
+
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div>
+                <h4>Donna Esfiha</h4>
+                <p>Ingredientes selecionados, massa artesanal e assadas na hora. A melhor experiência em esfihas.</p>
+            </div>
+            <div>
+                <h4>Atendimento</h4>
+                <p>📞 WhatsApp: (11) 98765-4321</p>
+                <p>📍 Av. das Nações Unidas, 1234 - Centro</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="god-phrase">"Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos." -
+                Provérbios 16:3</p>
+            <p class="copyright">&copy; 2026 Donna Esfiha. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="../script/auth.js"></script>
+    <script src="../script/cadastro-endereco.js"></script>
+</body>
+
+</html>

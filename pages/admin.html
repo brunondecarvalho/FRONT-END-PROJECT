@@ -1,24 +1,29 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Donna Esfiha</title>
     <link rel="stylesheet" href="../style/style.css">
 </head>
+
 <body>
     <header>
         <div class="header-left">
             <button onclick="window.location.href='index.html'" class="back-btn" title="Ver Loja">❮</button>
             <div class="logo">Painel Gestor</div>
         </div>
-        <button onclick="logout()" style="background:none; border:none; color:var(--primary-red); font-weight:bold; cursor:pointer;">Sair</button>
+        <button onclick="logout()"
+            style="background:none; border:none; color:var(--primary-red); font-weight:bold; cursor:pointer;">Sair</button>
     </header>
 
     <main class="container">
         <div class="admin-tabs">
-            <button class="tab-btn active" onclick="switchTab('pedidos')">📦 Pedidos</button>
-            <button class="tab-btn" onclick="switchTab('config')">⚙️ Configurações</button>
+            <button class="tab-btn active" onclick="switchTab(event, 'pedidos')">📦 Pedidos</button>
+            <button class="tab-btn" onclick="switchTab(event, 'produtos')">🍕 Cardápio / Produtos</button>
+            <button class="tab-btn" onclick="switchTab(event, 'usuarios')">👥 Usuários</button>
+            <button class="tab-btn" onclick="switchTab(event, 'config')">⚙️ Configurações</button>
         </div>
 
         <div id="pedidos" class="tab-content active">
@@ -26,18 +31,86 @@
             <div id="orders-list">Carregando pedidos...</div>
         </div>
 
+        <div id="produtos" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: var(--text-main);">Produtos em Linha</h2>
+            <div id="admin-products-list">Carregando produtos cadastrados...</div>
+
+            <h2 style="margin-bottom: 20px; color: var(--text-main);">Cadastrar Novo Produto</h2>
+            <div class="order-card" style="max-width: 600px; margin: 0 auto 30px auto; padding: 25px;">
+                <form id="product-form" onsubmit="saveProduct(event)">
+                    <label style="font-weight:bold; display:block; margin-bottom: 5px;">Nome do Produto *</label>
+                    <input type="text" id="prod-name" placeholder="Ex: Esfiha de Carne Premium" required>
+
+                    <label style="font-weight:bold; display:block; margin-bottom: 5px;">Descrição / Ingredientes
+                        *</label>
+                    <textarea id="prod-desc" placeholder="Ex: Carne moída temperada com limão, tomate e especiarias."
+                        required></textarea>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="font-weight:bold; display:block; margin-bottom: 5px;">Preço (R$) *</label>
+                            <input type="number" id="prod-price" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div>
+                            <label style="font-weight:bold; display:block; margin-bottom: 5px;">Categoria *</label>
+                            <select id="prod-category" required>
+                                <option value="1">Salgadas</option>
+                                <option value="2">Doces</option>
+                                <option value="3">Bebidas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label style="font-weight:bold; display:block; margin-bottom: 5px;">URL da Imagem (Opcional)</label>
+                    <input type="url" id="prod-image" placeholder="Ex: https://link-da-imagem.com/foto.jpg">
+
+                    <button type="submit" class="btn" style="margin-top: 10px;">💾 Salvar Produto</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="usuarios" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: var(--text-main);">Clientes e Usuários Registrados</h2>
+            <div id="admin-users-list">Carregando usuários...</div>
+        </div>
+
         <div id="config" class="tab-content">
-            <h2 style="margin-bottom: 20px; color: var(--text-main);">Configurações</h2>
-            <div class="order-card">
-                <label style="display:flex; align-items:center; gap:10px; font-weight:bold; margin-bottom:20px; font-size:1.1rem; cursor: pointer;">
-                    <input type="checkbox" id="isOpen" style="width:25px; height:25px; margin:0; accent-color: var(--success-green);">
+            <h2 style="margin-bottom: 20px; color: var(--text-main);">Configurações da Loja</h2>
+            <div class="order-card" style="max-width: 600px; margin: 0 auto; padding: 25px;">
+                <label
+                    style="display:flex; align-items:center; gap:10px; font-weight:bold; margin-bottom:20px; font-size:1.1rem; cursor: pointer;">
+                    <input type="checkbox" id="isOpen"
+                        style="width:25px; height:25px; margin:0; accent-color: var(--success-green);">
                     Loja Aberta para Pedidos
                 </label>
-                <label style="font-weight:bold; display:block; margin-bottom: 5px;">Tempo Estimado de Entrega</label>
-                <input type="text" id="estimatedTime" placeholder="Ex: 40-50 min">
-                <label style="font-weight:bold; display:block; margin-bottom: 5px;">Chave PIX</label>
-                <input type="text" id="pixKey" placeholder="Seu CPF ou Celular">
-                <button class="btn" style="margin-top: 10px;" onclick="saveConfig()">Salvar Configurações</button>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">Tempo de Entrega
+                            (Minutos)</label>
+                        <input type="number" id="estimatedDeliveryTimeMinutes" placeholder="Ex: 40">
+                    </div>
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">Telefone de Contato</label>
+                        <input type="text" id="phone" placeholder="Ex: (11) 98765-4321">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">Taxa de Entrega (R$)</label>
+                        <input type="number" id="deliveryFee" step="0.01" placeholder="Ex: 5.00">
+                    </div>
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom: 5px;">Pedido Mínimo (R$)</label>
+                        <input type="number" id="minimumOrderValue" step="0.01" placeholder="Ex: 20.00">
+                    </div>
+                </div>
+
+                <label style="font-weight:bold; display:block; margin-bottom: 5px;">Chave PIX para Recebimento</label>
+                <input type="text" id="pixKey" placeholder="E-mail, CPF ou CNPJ">
+
+                <button class="btn" style="margin-top: 15px;" onclick="saveConfig()">Salvar Configurações</button>
             </div>
         </div>
     </main>
@@ -45,4 +118,5 @@
     <script src="../script/auth.js"></script>
     <script src="../script/admin.js"></script>
 </body>
+
 </html>

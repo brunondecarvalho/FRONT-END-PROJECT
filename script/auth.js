@@ -1,7 +1,7 @@
 const API_URL = 'https://localhost:7240'; 
 
 function checkAuth(role = 'user') {
-    const user = JSON.parse(localStorage.getItem('esfiharia_user'));
+    const user = JSON.parse(localStorage.getItem('user'));
     
     if (!user && !window.location.href.includes('login') && !window.location.href.includes('cadastro')) {
         window.location.href = 'login.html';
@@ -18,11 +18,11 @@ function checkAuth(role = 'user') {
 }
 
 function getUser() {
-    return JSON.parse(localStorage.getItem('esfiharia_user'));
+    return JSON.parse(localStorage.getItem('user'));
 }
 
 function logout() {
-    localStorage.removeItem('esfiharia_user');
+    localStorage.removeItem('user');
     window.location.href = 'login.html';
 }
 
@@ -94,7 +94,7 @@ async function login(email, senha) {
         };
 
         // 2. Faz o disparo POST para a API de Usuários
-        const response = await fetch(`${API_URL}/api/User/login`, {
+        const response = await fetch(`https://localhost:7240/api/User/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(loginPayload)
@@ -106,12 +106,13 @@ async function login(email, senha) {
         }
 
         const userData = await response.json();
+        const userLogado = userData.user;
 
         // 4. Sucesso! Guardamos os dados do usuário no navegador (LocalStorage)
         // Isso é crucial para que possamos usar o "idUser: 3" dinamicamente depois!
-        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('user', JSON.stringify(userLogado));
         
-        alert('Login realizado com sucesso! Bem-vindo(a), ' + (userData.name || 'Usuário'));
+        alert('Login realizado com sucesso! Bem-vindo(a), ' + (userLogado.name || 'Usuário'));
         
         // Redireciona para a página principal do seu site de esfihas
         window.location.href = 'index.html'; 
@@ -147,7 +148,7 @@ async function register() {
         };
         
         // 3. Disparo POST para criar o usuário no banco de dados MySQL via API
-        const response = await fetch(`${API_URL}/api/User`, {
+        const response = await fetch(`https://localhost:7240/api/User`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newUserPayload)

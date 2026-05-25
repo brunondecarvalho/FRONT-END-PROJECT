@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Histórico - Esfiharia</title>
+    <title>Histórico de Pedidos - Donna Esfiha</title>
     <link rel="stylesheet" href="../style/style.css">
 </head>
 <body>
     <header>
         <div class="header-left">
             <button onclick="window.location.href='index.html'" class="back-btn">❮</button>
-            <div class="logo">Pedidos</div>
+            <div class="logo"> Seus Pedidos</div>
         </div>
         <button onclick="logout()" style="background:none; border:none; color:var(--primary-red); font-weight:bold; cursor:pointer;">Sair</button>
     </header>
@@ -25,47 +25,78 @@
         </div>
     </footer>
 
-    <script src="js/auth.js"></script>
+    <script src="../script/auth.js"></script>
     <script>
+        // Obtém os dados do usuário logado através do auth.js
         const user = checkAuth();
         
-        function getStatusVisual(status) {
-            switch(status) {
-                case 'pendente': return { class: 'bg-pendente', text: 'Pendente' };
-                case 'preparando': return { class: 'bg-preparando', text: 'Preparando' };
-                case 'em_rota': return { class: 'bg-rota', text: 'Em Rota' };
-                case 'pronto': return { class: 'bg-rota', text: 'Pronto p/ Retirar' };
-                case 'concluido': return { class: 'bg-concluido', text: 'Concluído' };
-                default: return { class: '', text: status };
+        // CORREÇÃO 1: Mapeamento alterado de Strings para Números (IDs vindo da API do C#)
+        function getStatusVisual(idStatus) {
+            switch(idStatus) {
+                case 3: return { class: 'bg-pendente', text: 'Pendente' };
+                case 4: return { class: 'bg-preparando', text: 'Preparando' };
+                case 5: return { class: 'bg-rota', text: 'Em Rota' };
+                case 6: return { class: 'bg-rota', text: 'Pronto p/ Retirar' };
+                case 7: return { class: 'bg-concluido', text: 'Concluído' };
+                default: return { class: '', text: 'Processando' };
             }
         }
 
+        // Função auxiliar para traduzir a categoria do pedido
+        function getCategoryText(idCategory) {
+            return idCategory === 1 ? 'Delivery' : 'Retirada no Balcão';
+        }
+
         async function loadHistory() {
+            // Garante que só fará a requisição se o usuário estiver de fato logado
+            if (!user || !user.id) return;
+
             try {
-                const res = await fetch(`${API_URL}/orders?userId=${user.id}`);
+                // CORREÇÃO 2: Nova URL apontando para o endpoint correto com o ID dinâmico
+                const res = await fetch(`https://localhost:7240/api/Order/user/${user.id}`);
+                
+                if (!res.ok) {
+                    throw new Error('Não foi possível buscar o histórico.');
+                }
+
                 const orders = await res.json();
                 
                 document.getElementById('orders-container').innerHTML = orders.length === 0 
                     ? '<p style="text-align:center; padding:40px;">Você ainda não tem pedidos.</p>' 
                     : orders.reverse().map(o => {
-                        const visual = getStatusVisual(o.status);
+                        // Tratamentos dos novos campos da API:
+                        const visual = getStatusVisual(o.idStatus);
+                        const categoryText = getCategoryText(o.idOrderCategory);
+                        
+                        // Formatação amigável para a data brasileira (DD/MM/AAAA às HH:MM)
+                        const dateFormatted = new Date(o.date).toLocaleString('pt-BR', {
+                            dateStyle: 'short',
+                            timeStyle: 'short'
+                        });
+
                         return `
                         <div class="order-item">
                             <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:10px;">
-                                <strong>Pedido #${o.id.slice(-4)}</strong>
+                                <strong>Pedido #${o.id}</strong>
                                 <span class="status-badge ${visual.class}">${visual.text}</span>
                             </div>
                             <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.8;">
-                                <p><strong>Data:</strong> ${o.date}</p>
-                                <p><strong>Tipo:</strong> ${o.orderType.toUpperCase()} - ${o.address}</p>
+                                <p><strong>Data:</strong> ${dateFormatted}</p>
+                                <p><strong>Tipo:</strong> ${categoryText}</p>
+                                <p><strong>Qtd. Itens:</strong> ${o.itemsCount} itens</p>
                             </div>
                             <div style="margin-top:15px; font-weight:900; font-size:1.2rem; color:var(--primary-red); text-align:right;">
-                                Total: R$ ${o.total.toFixed(2)}
+                                Total: R$ ${o.totalValue.toFixed(2)}
                             </div>
                         </div>`
                     }).join('');
-            } catch(e) { document.getElementById('orders-container').innerHTML = 'Erro ao carregar.'; }
+            } catch(e) { 
+                console.error(e);
+                document.getElementById('orders-container').innerHTML = '<p style="text-align:center; color:var(--primary-red); padding:40px;">Erro ao carregar o histórico de pedidos.</p>'; 
+            }
         }
+
+        // Executa a busca assim que a tela carrega
         loadHistory();
     </script>
 </body>

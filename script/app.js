@@ -178,7 +178,6 @@
 // if(document.getElementById('product-grid')) initApp();
 
 // URL Base da sua API C# definida globalmente
-const API_URL = 'https://localhost:7240';
 
 let cart = [];
 let storeData = { isOpen: true, estimatedTime: '30-40 min', pixKey: 'esfiharia@pix.com' };
@@ -251,7 +250,7 @@ async function fetchStoreConfig() {
 // -----------------------------------------------------------------
 async function fetchProducts() {
     try {
-        const res = await fetch(`${API_URL}/api/Product`);
+        const res = await fetch(`https://localhost:7240/api/Product`);
         if (!res.ok) throw new Error('Não foi possível obter a lista de produtos da API.');
         
         products = await res.json();
@@ -391,7 +390,7 @@ async function sendOrderToDatabase(orderPayload) {
         // 1. Envia o POST estruturado APENAS para a rota de criação de Pedidos
         console.log("[TESTE] Enviando payload para /api/Order:", orderPayload);
         
-        const orderResponse = await fetch(`${API_URL}/api/Order`, {
+        const orderResponse = await fetch(`https://localhost:7240/api/Order`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(orderPayload)

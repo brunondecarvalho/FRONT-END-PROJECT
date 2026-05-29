@@ -3,6 +3,7 @@ let cart = [];
 let storeData = { 
     isOpen: false, 
     estimatedTime: 'Carregando...', 
+    estimatedTimeDeliveryMinutes: 40, // Valor padrão de fallback (segurança)
     pixKey: '',
     deliveryFee: 0 
 };
@@ -92,37 +93,32 @@ function setupEventListeners() {
 
 async function fetchStoreConfig() {
     try {
-        const res = await fetch(`https://localhost:7240/api/store-settings`);
-        if (!res.ok) throw new Error('Não foi possível obter as configurações da loja.');
+        const response = await fetch('https://localhost:7240/api/store-settings');
+        if (!response.ok) throw new Error();
         
-        const data = await res.json();
+        const config = await response.json();
+        
+        // Mapeia os dados vindos do endpoint C#
+        storeData.isOpen = config.isOpen;
+        storeData.estimatedTime = config.estimatedTime || "40-50 min";
+        storeData.pixKey = config.pixKey || "";
+        storeData.deliveryFee = config.deliveryFee || 0;
+        
+        // NOVO: Armazena o tempo vindo do banco de dados
+        storeData.estimatedTimeDeliveryMinutes = config.estimatedTimeDeliveryMinutes || 40;
 
-        storeData = {
-            isOpen: data.isOpen === 1 || data.isOpen === true, 
-            estimatedTime: `Entregas em torno de ${data.estimatedDeliveryTimeMinutes} min`,
-            pixKey: data.pixKey,
-            deliveryFee: data.deliveryFee || 0
-        };
-
-        const statusDiv = document.getElementById('store-status');
-        if (statusDiv) {
+        const statusEl = document.getElementById('store-status');
+        if (statusEl) {
             if (storeData.isOpen) {
-                statusDiv.innerHTML = `🟢 Aberto - Entrega em ${storeData.estimatedTime}`;
-                statusDiv.className = `status-bar status-open`;
+                statusEl.innerText = `🟢 Aberto • Entrega: ${storeData.estimatedTime} • Taxa: R$ ${storeData.deliveryFee.toFixed(2)}`;
+                statusEl.className = "status-bar open";
             } else {
-                statusDiv.innerHTML = `🔴 Fechado no momento - Faça seu agendamento`;
-                statusDiv.className = `status-bar status-closed`;
+                statusEl.innerText = "🔴 Fechado no momento. Faça seu agendamento!";
+                statusEl.className = "status-bar closed";
             }
         }
-
-    } catch (error) {
-        console.error("Erro ao buscar configurações da loja:", error);
-        
-        const statusDiv = document.getElementById('store-status');
-        if (statusDiv) {
-            statusDiv.innerHTML = `⚠️ Erro de conexão com o servidor`;
-            statusDiv.className = `status-bar status-closed`;
-        }
+    } catch {
+        console.error("Erro ao carregar configurações da esfiharia.");
     }
 }
 
@@ -249,9 +245,16 @@ async function loadAddressesToSelect() {
     }
 }
 
+// =================================================================
+// ATUALIZADO: Ajustado para o payload exato esperado pela API C#
+// =================================================================
 async function processOrder() {
     const loggedUser = JSON.parse(localStorage.getItem('user'));
-    if (!loggedUser) return alert("Você precisa fazer login para finalizar o pedido!");
+    
+    if (!loggedUser) {
+        alert("Você precisa fazer login para finalizar o pedido!");
+        return;
+    }
 
     const userId = loggedUser.id || loggedUser.Id;
     const orderType = document.getElementById('order-type').value;
@@ -271,66 +274,55 @@ async function processOrder() {
         addressText = selectedOption.getAttribute('data-fullstring') || "";
     }
 
+    const paymentMethod = document.getElementById('pay-method').value;
+    let paymentText = "";
+    if (paymentMethod === 'pix') paymentText = "PIX Automático";
+    else if (paymentMethod === 'card') paymentText = "Maquininha de Cartão na Hora";
+    else if (paymentMethod === 'cash') paymentText = "Dinheiro Físico";
+
     let notaPedido = document.getElementById('observation').value.trim();
     if (orderType === 'entrega') {
-        notaPedido = `[ENTREGA] Endereço: ${addressText} | Obs: ${notaPedido || 'Nenhuma'}`;
+        notaPedido = `[ENTREGA] Endereço: ${addressText} | Obs: ${notaPedido || 'Nenhuma'} | [Forma de Pagamento: ${paymentText}]`;
     } else {
-        notaPedido = `[RETIRADA NA LOJA] | Obs: ${notaPedido || 'Nenhuma'}`;
+        notaPedido = `[RETIRADA NA LOJA] | Obs: ${notaPedido || 'Nenhuma'} | [Forma de Pagamento: ${paymentText}]`;
     }
 
+    // MONTAGEM DO JSON CORRIGIDO CONFORME O MODELO DA SUA API
     const orderPayload = {
         idUser: parseInt(userId),
         idOrderCategory: orderType === 'entrega' ? 1 : 2,
-        idAddress: orderType === 'entrega' ? selectedAddressId : 0, 
-        deliveryValue: orderType === 'entrega' ? storeData.deliveryFee : 0,
+        idAddress: orderType === 'entrega' ? selectedAddressId : null, 
+        deliveryValue: orderType === 'entrega' ? parseFloat(storeData.deliveryFee) : 0,
         discountValue: 0,
-        deliveryTime: orderType === 'entrega' ? 40 : 15,
+        deliveryTimeMinutes: orderType === 'entrega' ? parseInt(storeData.estimatedTimeDeliveryMinutes) : 15,
         note: notaPedido,
         items: cart.map(item => ({
-            idProduct: item.id || item.Id,
-            quantity: item.quantity
+            idProduct: parseInt(item.id || item.Id),
+            quantity: parseInt(item.quantity)
         }))
     };
 
     const total = cart.reduce((acc, item) => acc + ((item.price || item.Price) * item.quantity), 0);
-    const paymentMethod = document.getElementById('pay-method').value;
 
-    if (paymentMethod === 'pix') {
-        showPixModal({ total, payload: orderPayload });
-    } else {
-        await sendOrderToDatabase(orderPayload);
-    }
-}
-
-function showPixModal(orderInfo) {
-    document.getElementById('cart-modal').style.display = 'none';
-    document.getElementById('pix-modal').style.display = 'block';
-    document.getElementById('pix-amount').innerText = `R$ ${orderInfo.total.toFixed(2)}`;
-    document.getElementById('pix-key').innerText = storeData.pixKey;
-    window.pendingOrderPayload = orderInfo.payload;
-}
-
-async function confirmPixPayment() {
-    const payload = window.pendingOrderPayload;
-    await sendOrderToDatabase(payload);
+    // Dispara o envio seguro para o banco de dados antes do pós-venda
+    await sendOrderToDatabase(orderPayload, paymentMethod, total);
 }
 
 // =================================================================
-// ATUALIZADO: Envio do Pedido com o Header de Autenticação Bearer Token
+// ATUALIZADO: Salva no banco primeiro e gerencia o pós-venda (PIX)
 // =================================================================
-async function sendOrderToDatabase(orderPayload) {
+async function sendOrderToDatabase(orderPayload, paymentMethod, total) {
     try {
-        console.log("[TESTE] Enviando payload para /api/Order:", orderPayload);
+        console.log("[TESTE] Gravando pedido de forma segura no banco:", orderPayload);
 
         const orderResponse = await fetch(`https://localhost:7240/api/Order`, {
             method: 'POST',
-            // Substituído para injetar o Token JWT dinamicamente
             headers: getAuthHeaders(),
             body: JSON.stringify(orderPayload)
         });
 
         if (!orderResponse.ok) {
-            if (orderResponse.status === 401) throw new Error("Não autorizado. Faça login novamente.");
+            if (orderResponse.status === 401) throw new Error("Não autorizado. Faça o login novamente.");
             const errText = await orderResponse.text();
             throw new Error(`Erro na API C#: ${errText || orderResponse.statusText}`);
         }
@@ -338,21 +330,42 @@ async function sendOrderToDatabase(orderPayload) {
         const orderData = await orderResponse.json();
         const createdOrderId = orderData.id || orderData.idOrder || "Gerado";
 
-        console.log(`[TESTE SUCCESS] Pedido #${createdOrderId} gravado com sucesso!`);
-        alert(`🎉 Pedido #${createdOrderId} concluído com sucesso!`);
-
+        // Limpa o carrinho local pois o pedido já foi garantido e salvo no banco da API
         cart = [];
         updateCartUI();
 
-        document.getElementById('cart-modal').style.display = 'none';
-        document.getElementById('pix-modal').style.display = 'none';
-
-        window.location.href = 'historico.html';
+        // Se for PIX, abre o modal informativo com o ID real do pedido criado
+        if (paymentMethod === 'pix') {
+            document.getElementById('cart-modal').style.display = 'none';
+            showPixModal({ total, id: createdOrderId });
+        } else {
+            // Se for dinheiro ou cartão, avisa e envia para a tela de histórico imediatamente
+            alert(`🎉 Pedido #${createdOrderId} enviado com sucesso! Status atual: Pendente.`);
+            document.getElementById('cart-modal').style.display = 'none';
+            window.location.href = 'historico.html';
+        }
 
     } catch (e) {
-        console.error("[ERRO NO TESTE]:", e);
-        alert("Erro ao tentar salvar o pedido: " + e.message);
+        console.error("[ERRO NO FILTRO DE PEDIDO]:", e);
+        alert("Erro ao salvar pedido: " + e.message);
     }
+}
+
+// =================================================================
+// ATUALIZADO: Modal do PIX recebe o ID real do banco para exibição
+// =================================================================
+function showPixModal(orderInfo) {
+    document.getElementById('pix-modal').style.display = 'block';
+    document.getElementById('pix-amount').innerText = `R$ ${orderInfo.total.toFixed(2)}`;
+    document.getElementById('pix-key').innerText = storeData.pixKey;
+    // Vincula o ID gerado globalmente para o redirecionamento posterior
+    window.lastCreatedOrderId = orderInfo.id;
+}
+
+function confirmPixPayment() {
+    alert(`🎉 Pedido #${window.lastCreatedOrderId} registrado! Redirecionando você para o seu histórico de pedidos.`);
+    document.getElementById('pix-modal').style.display = 'none';
+    window.location.href = 'historico.html';
 }
 
 function toggleModal(id, show) {

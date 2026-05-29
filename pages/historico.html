@@ -27,77 +27,96 @@
 
     <script src="../script/auth.js"></script>
     <script>
-        // Obtém os dados do usuário logado através do auth.js
-        const user = checkAuth();
-        
-        // CORREÇÃO 1: Mapeamento alterado de Strings para Números (IDs vindo da API do C#)
-        function getStatusVisual(idStatus) {
-            switch(idStatus) {
-                case 3: return { class: 'bg-pendente', text: 'Pendente' };
-                case 4: return { class: 'bg-preparando', text: 'Preparando' };
-                case 5: return { class: 'bg-rota', text: 'Em Rota' };
-                case 6: return { class: 'bg-rota', text: 'Pronto p/ Retirar' };
-                case 7: return { class: 'bg-concluido', text: 'Concluído' };
-                default: return { class: '', text: 'Processando' };
-            }
+    // Obtém os dados do usuário logado através do auth.js ou localStorage diretamente
+    // Garante compatibilidade caso venha como string ou objeto puro
+    const userRaw = localStorage.getItem('user');
+    const user = userRaw ? JSON.parse(userRaw) : null;
+    const token = localStorage.getItem('token');
+    
+    // CORREÇÃO 1: Mapeamento alterado de Strings para Números (IDs vindo da API do C#)
+    function getStatusVisual(idStatus) {
+        switch(idStatus) {
+            case 3: return { class: 'bg-pendente', text: 'Pendente' };
+            case 4: return { class: 'bg-preparando', text: 'Preparando' };
+            case 5: return { class: 'bg-rota', text: 'Em Rota' };
+            case 6: return { class: 'bg-rota', text: 'Pronto p/ Retirar' };
+            case 7: return { class: 'bg-concluido', text: 'Concluído' };
+            default: return { class: '', text: 'Processando' };
+        }
+    }
+
+    // Função auxiliar para traduzir a categoria do pedido
+    function getCategoryText(idCategory) {
+        return idCategory === 1 ? 'Delivery' : 'Retirada no Balcão';
+    }
+
+    async function loadHistory() {
+        // Garante que só fará a requisição se o usuário estiver de fato logado e houver token
+        if (!user || (!user.id && !user.Id) || !token) {
+            document.getElementById('orders-container').innerHTML = '<p style="text-align:center; padding:40px;">Você precisa estar logado para ver o histórico.</p>';
+            return;
         }
 
-        // Função auxiliar para traduzir a categoria do pedido
-        function getCategoryText(idCategory) {
-            return idCategory === 1 ? 'Delivery' : 'Retirada no Balcão';
-        }
+        const userId = user.id || user.Id;
 
-        async function loadHistory() {
-            // Garante que só fará a requisição se o usuário estiver de fato logado
-            if (!user || !user.id) return;
-
-            try {
-                // CORREÇÃO 2: Nova URL apontando para o endpoint correto com o ID dinâmico
-                const res = await fetch(`https://localhost:7240/api/Order/user/${user.id}`);
-                
-                if (!res.ok) {
-                    throw new Error('Não foi possível buscar o histórico.');
+        try {
+            // CORREÇÃO 2: Nova URL com Header de Autenticação JWT injetado
+            const res = await fetch(`https://localhost:7240/api/Order/user/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Injeção do token JWT
                 }
-
-                const orders = await res.json();
-                
-                document.getElementById('orders-container').innerHTML = orders.length === 0 
-                    ? '<p style="text-align:center; padding:40px;">Você ainda não tem pedidos.</p>' 
-                    : orders.reverse().map(o => {
-                        // Tratamentos dos novos campos da API:
-                        const visual = getStatusVisual(o.idStatus);
-                        const categoryText = getCategoryText(o.idOrderCategory);
-                        
-                        // Formatação amigável para a data brasileira (DD/MM/AAAA às HH:MM)
-                        const dateFormatted = new Date(o.date).toLocaleString('pt-BR', {
-                            dateStyle: 'short',
-                            timeStyle: 'short'
-                        });
-
-                        return `
-                        <div class="order-item">
-                            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:10px;">
-                                <strong>Pedido #${o.id}</strong>
-                                <span class="status-badge ${visual.class}">${visual.text}</span>
-                            </div>
-                            <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.8;">
-                                <p><strong>Data:</strong> ${dateFormatted}</p>
-                                <p><strong>Tipo:</strong> ${categoryText}</p>
-                                <p><strong>Qtd. Itens:</strong> ${o.itemsCount} itens</p>
-                            </div>
-                            <div style="margin-top:15px; font-weight:900; font-size:1.2rem; color:var(--primary-red); text-align:right;">
-                                Total: R$ ${o.totalValue.toFixed(2)}
-                            </div>
-                        </div>`
-                    }).join('');
-            } catch(e) { 
-                console.error(e);
-                document.getElementById('orders-container').innerHTML = '<p style="text-align:center; color:var(--primary-red); padding:40px;">Erro ao carregar o histórico de pedidos.</p>'; 
+            });
+            
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error('Sessão expirada ou não autorizada. Faça login novamente.');
+                }
+                throw new Error('Não foi possível buscar o histórico.');
             }
-        }
 
-        // Executa a busca assim que a tela carrega
-        loadHistory();
-    </script>
+            const orders = await res.json();
+            
+            document.getElementById('orders-container').innerHTML = orders.length === 0 
+                ? '<p style="text-align:center; padding:40px;">Você ainda não tem pedidos.</p>' 
+                : orders.reverse().map(o => {
+                    const visual = getStatusVisual(o.idStatus || o.IdStatus);
+                    const categoryText = getCategoryText(o.idOrderCategory || o.IdOrderCategory);
+                    
+                    const dateFormatted = new Date(o.date || o.Date).toLocaleString('pt-BR', {
+                        dateStyle: 'short',
+                        timeStyle: 'short'
+                    });
+
+                    const totalValue = o.totalValue !== undefined ? o.totalValue : (o.TotalValue || 0);
+                    const itemsCount = o.itemsCount !== undefined ? o.itemsCount : (o.ItemsCount || 0);
+                    const orderId = o.id || o.Id;
+
+                    return `
+                    <div class="order-item">
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:10px;">
+                            <strong>Pedido #${orderId}</strong>
+                            <span class="status-badge ${visual.class}">${visual.text}</span>
+                        </div>
+                        <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.8;">
+                            <p><strong>Data:</strong> ${dateFormatted}</p>
+                            <p><strong>Tipo:</strong> ${categoryText}</p>
+                            <p><strong>Qtd. Itens:</strong> ${itemsCount} itens</p>
+                        </div>
+                        <div style="margin-top:15px; font-weight:900; font-size:1.2rem; color:var(--primary-red); text-align:right;">
+                            Total: R$ ${Number(totalValue).toFixed(2)}
+                        </div>
+                    </div>`
+                }).join('');
+        } catch(e) { 
+            console.error(e);
+            document.getElementById('orders-container').innerHTML = `<p style="text-align:center; color:var(--primary-red); padding:40px;">${e.message}</p>`; 
+        }
+    }
+
+    // Executa a busca assim que a tela carrega
+    loadHistory();
+</script>
 </body>
 </html>

@@ -1,5 +1,15 @@
-// Verifica se o usuário tem permissão de administrador
 checkAuth('admin');
+
+// const API_URL = 'https://localhost:7240/api';
+
+function getAuthHeaders() {
+    const token = getToken();
+
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+}
 
 function getStatusVisual(idStatus) {
     switch(idStatus) {
@@ -16,17 +26,31 @@ function getStatusVisual(idStatus) {
 // 📦 PROCESSAMENTO E SELEÇÃO DE PEDIDOS
 // =================================================================
 async function loadOrders() {
-    try {
-        const [ordersRes, addressesRes, usersRes] = await Promise.all([
-            fetch(`https://localhost:7240/api/Order`),
-            fetch(`https://localhost:7240/api/Addresses`),
-            fetch(`https://localhost:7240/api/User`)
-        ]);
 
-        if (!ordersRes.ok || !addressesRes.ok || !usersRes.ok) throw new Error("Erro ao buscar dados do servidor");
-        
+    try {
+
+        const [ordersRes, addressesRes, usersRes] =
+            await Promise.all([
+
+                authFetch(`https://Localhost:7240/api/Order`),
+
+                authFetch(`https://Localhost:7240/api/Addresses`),
+
+                authFetch(`https://Localhost:7240/api/User`)
+            ]);
+
+        if (
+            !ordersRes.ok ||
+            !addressesRes.ok ||
+            !usersRes.ok
+        ) {
+            throw new Error();
+        }
+
         const orders = await ordersRes.json();
+
         const addresses = await addressesRes.json();
+
         const users = await usersRes.json();
         
         const html = orders.reverse().map(o => {
@@ -95,16 +119,29 @@ async function loadOrders() {
 }
 
 async function updateOrderStatus(id, newStatusId) {
+
     try {
-        const response = await fetch(`https://localhost:7240/api/Order/${id}/status`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, idStatus: newStatusId })
-        });
-        if (!response.ok) throw new Error();
+
+        const response = await authFetch(
+            `https://Localhost:7240/api/Order/${id}/status`,
+            {
+                method: 'PUT',
+
+                body: JSON.stringify({
+                    id,
+                    idStatus: newStatusId
+                })
+            }
+        );
+
+        if (!response.ok)
+            throw new Error();
+
         loadOrders();
-    } catch (error) {
-        alert("Erro ao mudar o status do pedido.");
+
+    } catch {
+
+        alert("Erro ao mudar status.");
     }
 }
 
@@ -112,10 +149,19 @@ async function updateOrderStatus(id, newStatusId) {
 // 🍕 GERENCIAMENTO DE PRODUTOS (DISPONIBILIDADE E EXCLUSÃO)
 // =================================================================
 async function loadAdminProducts() {
+
     try {
-        const res = await fetch(`https://localhost:7240/api/Product`);
-        if (!res.ok) throw new Error();
+
+        const res = await authFetch(
+            `https://Localhost:7240/api/Product`
+        );
+
+        if (!res.ok)
+            throw new Error();
+
         const products = await res.json();
+
+        // RESTANTE IGUAL
 
         const html = products.map(p => {
             // Nota: Se sua API C# não possuir propriedade 'isActive' ou 'isAvailable', tratamos como true por padrão
@@ -147,53 +193,105 @@ async function loadAdminProducts() {
 }
 
 async function saveProduct(event) {
+
     event.preventDefault();
+
     const productPayload = {
-        name: document.getElementById('prod-name').value,
-        description: document.getElementById('prod-desc').value,
-        price: parseFloat(document.getElementById('prod-price').value) || 0,
-        idCategory: parseInt(document.getElementById('prod-category').value),
-        image: document.getElementById('prod-image').value || '../img/default-esfiha.png',
-        isAvailable: true // Cadastra como disponível por padrão
+        name:
+            document.getElementById('prod-name').value,
+
+        description:
+            document.getElementById('prod-desc').value,
+
+        price:
+            parseFloat(
+                document.getElementById('prod-price').value
+            ) || 0,
+
+        idCategory:
+            parseInt(
+                document.getElementById('prod-category').value
+            ),
+
+        image:
+            document.getElementById('prod-image').value,
+
+        isAvailable: true
     };
 
     try {
-        const response = await fetch(`https://localhost:7240/api/Product`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(productPayload)
-        });
-        if (!response.ok) throw new Error();
-        alert("🎉 Produto cadastrado com sucesso!");
-        document.getElementById('product-form').reset();
+
+        const response = await authFetch(
+            `https://Localhost:7240/api/Product`,
+            {
+                method: 'POST',
+
+                body: JSON.stringify(productPayload)
+            }
+        );
+
+        if (!response.ok)
+            throw new Error();
+
+        alert('Produto cadastrado.');
+
         loadAdminProducts();
-    } catch (error) {
-        alert("Erro ao salvar produto.");
+
+    } catch {
+
+        alert('Erro ao salvar produto.');
     }
 }
 
-async function toggleProductAvailability(id, checkStatus) {
+async function toggleProductAvailability(
+    id,
+    checkStatus
+) {
+
     try {
-        // Envia o estado de disponibilidade atualizado para o endpoint parcial correspondente da sua API C#
-        await fetch(`https://localhost:7240/api/Product/${id}/availability`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, isAvailable: checkStatus })
-        });
-    } catch (e) {
-        alert("Erro ao alterar disponibilidade do item.");
+
+        await authFetch(
+            `https:/Localhost:7240/api/Product/${id}/availability`,
+            {
+                method: 'PUT',
+
+                body: JSON.stringify({
+                    id,
+                    isAvailable: checkStatus
+                })
+            }
+        );
+
+    } catch {
+
+        alert('Erro ao alterar disponibilidade.');
     }
 }
 
 async function deleteProduct(id) {
-    if (!confirm("Tem certeza que deseja deletar permanentemente este produto do catálogo?")) return;
+
+    if (!confirm('Deseja excluir?'))
+        return;
+
     try {
-        const res = await fetch(`https://localhost:7240/api/Product/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error();
-        alert("Produto removido!");
+
+        const res = await authFetch(
+            `https:/Localhost:7240/api/Product/${id}`,
+            {
+                method: 'DELETE'
+            }
+        );
+
+        if (!res.ok)
+            throw new Error();
+
+        alert('Produto removido.');
+
         loadAdminProducts();
-    } catch (e) {
-        alert("Não foi possível excluir o produto.");
+
+    } catch {
+
+        alert('Erro ao excluir produto.');
     }
 }
 
@@ -201,9 +299,16 @@ async function deleteProduct(id) {
 // 👥 GERENCIAMENTO DE USUÁRIOS
 // =================================================================
 async function loadAdminUsers() {
+
     try {
-        const res = await fetch(`https://localhost:7240/api/User`);
-        if (!res.ok) throw new Error();
+
+        const res = await authFetch(
+            `https:/Localhost:7240/api/User`
+        );
+
+        if (!res.ok)
+            throw new Error();
+
         const users = await res.json();
 
         const html = users.map(u => {
@@ -231,23 +336,38 @@ async function loadAdminUsers() {
 }
 
 async function deleteUser(id) {
-    const localUser = JSON.parse(localStorage.getItem('user'));
-    if (localUser && localUser.id === id) {
-        alert("Ação Negada: Você não pode deletar a sua própria conta de administrador em execução.");
+
+    const localUser = getUser();
+
+    if (localUser.id === id) {
+
+        alert('Você não pode deletar si mesmo.');
+
         return;
     }
 
-    if (!confirm("⚠️ ATENÇÃO: Deletar este usuário causará a perda de seus endereços vinculados. Confirmar exclusão?")) return;
+    if (!confirm('Deseja excluir usuário?'))
+        return;
 
     try {
-        const res = await fetch(`https://localhost:7240/api/User/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error();
-        
-        alert("Usuário excluído com sucesso!");
+
+        const res = await authFetch(
+            `https:Localhost:7240/api/User/${id}`,
+            {
+                method: 'DELETE'
+            }
+        );
+
+        if (!res.ok)
+            throw new Error();
+
+        alert('Usuário removido.');
+
         loadAdminUsers();
-        loadOrders(); // Recarrega os pedidos para atualizar nomes órfãos
-    } catch (e) {
-        alert("Falha ao excluir o usuário selecionado.");
+
+    } catch {
+
+        alert('Erro ao excluir usuário.');
     }
 }
 
@@ -256,40 +376,78 @@ async function deleteUser(id) {
 // =================================================================
 async function loadConfig() {
     try {
-        const res = await fetch(`https://localhost:7240/api/store-settings`);
-        if(res.ok) {
-            const config = await res.json();
-            document.getElementById('isOpen').checked = (config.isOpen === 1 || config.isOpen === true);
-            document.getElementById('estimatedDeliveryTimeMinutes').value = config.estimatedDeliveryTimeMinutes || 0;
-            document.getElementById('pixKey').value = config.pixKey || '';
-            document.getElementById('deliveryFee').value = config.deliveryFee || 0;
-            document.getElementById('minimumOrderValue').value = config.minimumOrderValue || 0;
-            document.getElementById('phone').value = config.phone || '';
-        }
+
+        const res = await authFetch(
+            `https:/Localhost:7240/api/store-settings`
+        );
+
+        if (!res.ok)
+            throw new Error();
+
+        const config = await res.json();
+        document.getElementById('isOpen').checked = (config.isOpen === 1 || config.isOpen === true);
+        document.getElementById('estimatedDeliveryTimeMinutes').value = config.estimatedDeliveryTimeMinutes || 0;
+        document.getElementById('pixKey').value = config.pixKey || '';
+        document.getElementById('deliveryFee').value = config.deliveryFee || 0;
+        document.getElementById('minimumOrderValue').value = config.minimumOrderValue || 0;
+        document.getElementById('phone').value = config.phone || '';
     } catch (e) { console.warn("Erro ao carregar configurações globais."); }
 }
 
 async function saveConfig() {
+
     const config = {
-        isOpen: document.getElementById('isOpen').checked ? 1 : 0,
-        estimatedDeliveryTimeMinutes: parseInt(document.getElementById('estimatedDeliveryTimeMinutes').value) || 0,
-        pixKey: document.getElementById('pixKey').value,
-        deliveryFee: parseFloat(document.getElementById('deliveryFee').value) || 0,
-        minimumOrderValue: parseFloat(document.getElementById('minimumOrderValue').value) || 0,
-        phone: document.getElementById('phone').value,
-        updateAt: new Date().toISOString()
+
+        isOpen:
+            document.getElementById('isOpen').checked,
+
+        estimatedDeliveryTimeMinutes:
+            parseInt(
+                document.getElementById(
+                    'estimatedDeliveryTimeMinutes'
+                ).value
+            ),
+
+        pixKey:
+            document.getElementById('pixKey').value,
+
+        deliveryFee:
+            parseFloat(
+                document.getElementById(
+                    'deliveryFee'
+                ).value
+            ),
+
+        minimumOrderValue:
+            parseFloat(
+                document.getElementById(
+                    'minimumOrderValue'
+                ).value
+            ),
+
+        phone:
+            document.getElementById('phone').value
     };
 
     try {
-        const response = await fetch(`https://localhost:7240/api/store-settings`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-        if (!response.ok) throw new Error();
-        alert('Configurações da loja salvas com sucesso!');
-    } catch (e) {
-        alert('Erro ao salvar as configurações.');
+
+        const response = await authFetch(
+            `https:/Localhost:7240/api/store-settings`,
+            {
+                method: 'PUT',
+
+                body: JSON.stringify(config)
+            }
+        );
+
+        if (!response.ok)
+            throw new Error();
+
+        alert('Configurações salvas.');
+
+    } catch {
+
+        alert('Erro ao salvar.');
     }
 }
 

@@ -1,18 +1,53 @@
-// Obtém o usuário logado via auth.js
+// Obtém o usuário logado via auth.js ou direto do localStorage
 const user = checkAuth();
+const token = localStorage.getItem('token');
 
 if (user && user.name) {
     document.getElementById('user-info').innerHTML = `<span style="font-weight:600; font-size:0.95rem; color:var(--text-main);">Olá, ${user.name.split(' ')[0]}</span>`;
 }
 
-// ==========================================
-// FUNÇÃO NOVA: Carrega os endereços do Usuário
-// ==========================================
+// =================================================================
+// FUNÇÃO AUXILIAR: Gera os cabeçalhos incluindo o Token JWT
+// =================================================================
+function getAuthHeaders(extraHeaders = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...extraHeaders
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+}
+
+// =================================================================
+// ATUALIZADO: Carrega os endereços do Usuário com Bearer Token
+// =================================================================
 async function loadUserAddresses() {
+    // Validação preventiva de autenticação
+    if (!user || (!user.id && !user.Id) || !token) {
+        const listContainer = document.getElementById('addresses-list-container');
+        if (listContainer) {
+            listContainer.innerHTML = `<p style="text-align:center; color:var(--primary-red); padding:20px;">Você precisa estar autenticado para ver seus endereços.</p>`;
+        }
+        return;
+    }
+
+    const userId = user.id || user.Id;
+
     try {
-        // Consome o endpoint dinâmico usando o id do usuário logado
-        const response = await fetch(`https://localhost:7240/api/Addresses/user/${user.id}`);
-        if (!response.ok) throw new Error("Erro ao buscar endereços");
+        // Consome o endpoint dinâmico injetando o cabeçalho JWT de autenticação
+        const response = await fetch(`https://localhost:7240/api/Addresses/user/${userId}`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                throw new Error("Sessão expirada ou não autorizada. Faça login novamente.");
+            }
+            throw new Error("Erro ao buscar endereços");
+        }
 
         const listContainer = document.getElementById('addresses-list-container');
         const addresses = await response.json();
@@ -23,58 +58,83 @@ async function loadUserAddresses() {
         }
 
         // Renderiza cada endereço aproveitando os estilos de cards e botões secundários
-        listContainer.innerHTML = addresses.map(addr => `
-            <div style="background: var(--bg-color); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                <div style="font-size: 0.9rem; color: var(--text-main);">
-                    <p><strong>${addr.address}, Nº ${addr.number}</strong></p>
-                    <p style="color: var(--text-muted); font-size:0.85rem;">${addr.neighborhood} - CEP: ${addr.cep}</p>
-                    ${addr.complement ? `<p style="font-size:0.8rem; color: var(--text-muted);"><b>Comp:</b> ${addr.complement}</p>` : ''}
-                    ${addr.landmark ? `<p style="font-size:0.8rem; color: #D97706;"><b>Ref:</b> ${addr.landmark}</p>` : ''}
+        listContainer.innerHTML = addresses.map(addr => {
+            const addressId = addr.id || addr.Id;
+            const street = addr.address || addr.Logradouro || addr.street || '';
+            const num = addr.number || addr.Numero || addr.number || 0;
+            const neighborhood = addr.neighborhood || addr.Bairro || addr.neighborhood || '';
+            const cep = addr.cep || addr.Cep || '';
+            const complement = addr.complement || addr.Complemento || '';
+            const landmark = addr.landmark || addr.PontoReferencia || '';
+
+            return `
+                <div style="background: var(--bg-color); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                    <div style="font-size: 0.9rem; color: var(--text-main);">
+                        <p><strong>${street}, Nº ${num}</strong></p>
+                        <p style="color: var(--text-muted); font-size:0.85rem;">${neighborhood} - CEP: ${cep}</p>
+                        ${complement ? `<p style="font-size:0.8rem; color: var(--text-muted);"><b>Comp:</b> ${complement}</p>` : ''}
+                        ${landmark ? `<p style="font-size:0.8rem; color: #D97706;"><b>Ref:</b> ${landmark}</p>` : ''}
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" onclick="deleteAddress(${addressId})" style="width: auto; padding: 8px 12px; border-radius: 8px; color: var(--primary-red); border-color: #fca5a5; background: #FEF2F2;" title="Excluir Endereço">
+                            🗑️
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <button class="btn btn-secondary" onclick="deleteAddress(${addr.id})" style="width: auto; padding: 8px 12px; border-radius: 8px; color: var(--primary-red); border-color: #fca5a5; background: #FEF2F2;" title="Excluir Endereço">
-                        🗑️
-                    </button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
     } catch (error) {
         console.error("Erro ao carregar endereços:", error);
-        document.getElementById('addresses-list-container').innerHTML = `<p style="text-align:center; color:var(--primary-red); padding:10px;">Erro ao carregar lista de endereços.</p>`;
+        document.getElementById('addresses-list-container').innerHTML = `<p style="text-align:center; color:var(--primary-red); padding:10px;">${error.message}</p>`;
     }
 }
 
-// ==========================================
-// FUNÇÃO NOVA: Exclui o endereço selecionado
-// ==========================================
+// =================================================================
+// ATUALIZADO: Exclui o endereço selecionado usando Bearer Token
+// =================================================================
 async function deleteAddress(addressId) {
+    if (!token) return alert("Sessão inválida. Por favor, faça login novamente.");
     if (!confirm("Tem certeza que deseja remover este endereço de entrega?")) return;
 
     try {
         const response = await fetch(`https://localhost:7240/api/Addresses/${addressId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders() // Injeção do token JWT no DELETE
         });
 
-        if (!response.ok) throw new Error("Erro ao deletar o endereço do servidor.");
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                throw new Error("Você não possui permissão para deletar este registro.");
+            }
+            throw new Error("Erro ao deletar o endereço do servidor.");
+        }
 
         alert("Endereço removido com sucesso!");
         loadUserAddresses(); // Recarrega a lista sem atualizar a página inteira
 
     } catch (error) {
         console.error("Erro ao excluir endereço:", error);
-        alert("Não foi possível excluir o endereço. Tente novamente.");
+        alert(error.message);
     }
 }
 
-// MODIFICAÇÃO: Salva o endereço e atualiza a lista em tempo real
+// =================================================================
+// ATUALIZADO: Salva o endereço em tempo real usando Bearer Token
+// =================================================================
 async function saveAddress(event) {
     event.preventDefault();
 
+    if (!token) {
+        alert("Você precisa estar logado para salvar um endereço.");
+        return;
+    }
+
+    const userId = user.id || user.Id;
     const rawCep = document.getElementById('cep').value.replace(/\D/g, '');
 
     const addressPayload = {
-        idUser: parseInt(user.id),
+        idUser: parseInt(userId),
         address: document.getElementById('address').value,
         number: parseInt(document.getElementById('number').value) || 0,
         neighborhood: document.getElementById('neighborhood').value,
@@ -86,11 +146,16 @@ async function saveAddress(event) {
     try {
         const response = await fetch('https://localhost:7240/api/Addresses', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(), // Injeção do token JWT no POST estruturado
             body: JSON.stringify(addressPayload)
         });
 
-        if (!response.ok) throw new Error('Falha ao registrar o endereço.');
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                throw new Error("A sua sessão expirou. Reconecte-se para salvar novos dados.");
+            }
+            throw new Error('Falha ao registrar o endereço.');
+        }
 
         alert('Endereço cadastrado com sucesso!');
         document.getElementById('address-form').reset(); // Limpa os campos do formulário
@@ -99,7 +164,7 @@ async function saveAddress(event) {
 
     } catch (error) {
         console.error('Erro ao enviar endereço:', error);
-        alert('Erro ao salvar o endereço.');
+        alert(error.message);
     }
 }
 

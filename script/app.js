@@ -8,6 +8,36 @@ let storeData = {
 };
 let products = [];
 
+// =================================================================
+// FUNÇÕES AUXILIARES DE AUTENTICAÇÃO (JWT)
+// =================================================================
+
+/**
+ * Retorna os headers necessários para requisições, incluindo o Token JWT se existir.
+ */
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+}
+
+/**
+ * Função para salvar os dados após o login de sucesso
+ * Pode ser invocada pela sua tela de login.html ou internamente.
+ */
+function handleLoginSuccess(authResponse) {
+    // Guarda o Token JWT e os dados do usuário fornecidos pela API
+    localStorage.setItem('token', authResponse.token);
+    localStorage.setItem('user', JSON.stringify(authResponse.user));
+}
+
+// =================================================================
+
 async function initApp() {
     // Tenta obter os dados salvos do usuário autenticado (definido no login)
     const user = JSON.parse(localStorage.getItem('user'));
@@ -37,13 +67,11 @@ function setupEventListeners() {
             if (catSelected === 'todas') {
                 renderProducts(products);
             } else {
-                // Mapeia o texto do botão para o ID numérico correspondente da API
                 let targetId = 0;
                 if (catSelected === 'salgadas') targetId = 1;
                 if (catSelected === 'doces') targetId = 2;
                 if (catSelected === 'bebidas') targetId = 3;
 
-                // Filtra verificando as duas possíveis grafias do ID vindas do C#
                 const filtered = products.filter(p => {
                     const productIdCategory = p.idCategory !== undefined ? p.idCategory : p.IdCategory;
                     return productIdCategory === targetId;
@@ -69,16 +97,13 @@ async function fetchStoreConfig() {
         
         const data = await res.json();
 
-        // Mapeia o JSON da API para a estrutura interna do seu app.js
         storeData = {
-            // Converte 1 para true e 0 para false (ou aceita booleano direto caso mude na API)
             isOpen: data.isOpen === 1 || data.isOpen === true, 
             estimatedTime: `Entregas em torno de ${data.estimatedDeliveryTimeMinutes} min`,
             pixKey: data.pixKey,
             deliveryFee: data.deliveryFee || 0
         };
 
-        // Atualiza a barra de status visual na interface (index.html)
         const statusDiv = document.getElementById('store-status');
         if (statusDiv) {
             if (storeData.isOpen) {
@@ -93,7 +118,6 @@ async function fetchStoreConfig() {
     } catch (error) {
         console.error("Erro ao buscar configurações da loja:", error);
         
-        // Fallback de segurança em caso de queda do servidor da API
         const statusDiv = document.getElementById('store-status');
         if (statusDiv) {
             statusDiv.innerHTML = `⚠️ Erro de conexão com o servidor`;
@@ -102,13 +126,10 @@ async function fetchStoreConfig() {
     }
 }
 
-// -----------------------------------------------------------------
-// CORREÇÃO: Consumindo o endpoint correto da sua API C#
-// -----------------------------------------------------------------
 async function fetchProducts() {
     try {
         const res = await fetch(`https://localhost:7240/api/Product`);
-        if (!res.ok) throw new Error('Não foi possível obter a lista de produtos da API.');
+        if (!res.ok) throw new Error('Não foi possível obter la lista de produtos da API.');
 
         products = await res.json();
         renderProducts(products);
@@ -118,7 +139,6 @@ async function fetchProducts() {
     }
 }
 
-// CORREÇÃO: Propriedades mapeadas em PascalCase para ler o JSON gerado pelo C# / Entity Framework
 function renderProducts(items) {
     const grid = document.getElementById('product-grid');
     if (!grid) return;
@@ -129,14 +149,12 @@ function renderProducts(items) {
     }
 
     grid.innerHTML = items.map(p => {
-        // Fallback de propriedades garantindo compatibilidade com PascalCase e camelCase
         const id = p.Id || p.id;
         const name = p.Name || p.name;
         const description = p.Description || p.description || '';
         const price = p.Price || p.price || 0.00;
-        const image = p.Image || p.image || '../img/default-esfiha.png'; // Imagem padrão caso venha nulo
+        const image = p.Image || p.image || '../img/default-esfiha.png';
 
-        // O objeto do produto é transformado em string JSON segura para passar no onclick
         const productJson = JSON.stringify({ id, name, price });
 
         return `
@@ -158,7 +176,6 @@ function renderProducts(items) {
 function addToCart(product) {
     if (!storeData.isOpen) return alert("Loja fechada no momento!");
 
-    // Suporta tanto id (camelCase) quanto Id (PascalCase) vindos da API
     const productId = product.id || product.Id;
     const existing = cart.find(item => (item.id || item.Id) === productId);
 
@@ -183,19 +200,32 @@ function updateCartUI() {
 }
 
 // =================================================================
-// FUNÇÃO NOVA: Busca endereços do usuário logado e monta o <select>
+// ATUALIZADO: Incluindo Headers de Autenticação JWT na rota de Endereço
 // =================================================================
 async function loadAddressesToSelect() {
     const loggedUser = JSON.parse(localStorage.getItem('user'));
-    // Recupera o ID real ou assume o fallback padrão 5 do seu sistema
-    const userId = loggedUser ? (loggedUser.id || loggedUser.Id) : 5;
+    
+    if (!loggedUser) {
+        alert("Você precisa estar logado para carregar seus endereços.");
+        return;
+    }
+
+    const userId = loggedUser.id || loggedUser.Id;
     const select = document.getElementById('address-select');
 
     if (!select) return;
 
     try {
-        const res = await fetch(`https://localhost:7240/api/Addresses/user/${userId}`);
-        if (!res.ok) throw new Error("Erro ao carregar endereços do banco.");
+        // Passando a função getAuthHeaders() para validar o Token no Backend C#
+        const res = await fetch(`https://localhost:7240/api/Addresses/user/${userId}`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+        
+        if (!res.ok) {
+            if (res.status === 401) throw new Error("Sessão expirada. Faça login novamente.");
+            throw new Error("Erro ao carregar endereços do banco.");
+        }
 
         const addresses = await res.json();
 
@@ -204,7 +234,6 @@ async function loadAddressesToSelect() {
             return;
         }
 
-        // Preenche as opções guardando o ID no 'value' e o texto completo para exibição
         select.innerHTML = addresses.map(addr => {
             const street = addr.address || addr.Logradouro || addr.street || '';
             const num = addr.number || addr.Numero || addr.number || '';
@@ -216,21 +245,21 @@ async function loadAddressesToSelect() {
 
     } catch (error) {
         console.error("Erro ao alimentar caixa de seleção:", error);
-        select.innerHTML = '<option value="">Erro ao carregar seus endereços.</option>';
+        select.innerHTML = `<option value="">${error.message}</option>`;
     }
 }
 
 async function processOrder() {
     const loggedUser = JSON.parse(localStorage.getItem('user'));
-    const userId = loggedUser ? (loggedUser.id || loggedUser.Id) : 5;
+    if (!loggedUser) return alert("Você precisa fazer login para finalizar o pedido!");
 
+    const userId = loggedUser.id || loggedUser.Id;
     const orderType = document.getElementById('order-type').value;
     const addressSelect = document.getElementById('address-select');
 
     let selectedAddressId = 0;
     let addressText = "";
 
-    // Validação e Captura se o pedido for Delivery
     if (orderType === 'entrega') {
         if (!addressSelect || addressSelect.value === "") {
             alert("Por favor, selecione ou cadastre um endereço válido para a entrega!");
@@ -249,11 +278,10 @@ async function processOrder() {
         notaPedido = `[RETIRADA NA LOJA] | Obs: ${notaPedido || 'Nenhuma'}`;
     }
 
-    // Montagem dinâmica baseada nas seleções reais da tela
     const orderPayload = {
         idUser: parseInt(userId),
         idOrderCategory: orderType === 'entrega' ? 1 : 2,
-        idAddress: orderType === 'entrega' ? selectedAddressId : 0, // Envia o ID real selecionado (ou 0 se retirar na loja)
+        idAddress: orderType === 'entrega' ? selectedAddressId : 0, 
         deliveryValue: orderType === 'entrega' ? storeData.deliveryFee : 0,
         discountValue: 0,
         deliveryTime: orderType === 'entrega' ? 40 : 15,
@@ -287,58 +315,51 @@ async function confirmPixPayment() {
     await sendOrderToDatabase(payload);
 }
 
+// =================================================================
+// ATUALIZADO: Envio do Pedido com o Header de Autenticação Bearer Token
+// =================================================================
 async function sendOrderToDatabase(orderPayload) {
     try {
-        // 1. Envia o POST estruturado APENAS para a rota de criação de Pedidos
         console.log("[TESTE] Enviando payload para /api/Order:", orderPayload);
 
         const orderResponse = await fetch(`https://localhost:7240/api/Order`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            // Substituído para injetar o Token JWT dinamicamente
+            headers: getAuthHeaders(),
             body: JSON.stringify(orderPayload)
         });
 
         if (!orderResponse.ok) {
+            if (orderResponse.status === 401) throw new Error("Não autorizado. Faça login novamente.");
             const errText = await orderResponse.text();
             throw new Error(`Erro na API C#: ${errText || orderResponse.statusText}`);
         }
 
-        // Tenta ler a resposta da API (geralmente o objeto Order gravado com o ID gerado pelo banco)
         const orderData = await orderResponse.json();
         const createdOrderId = orderData.id || orderData.idOrder || "Gerado";
 
-        // -----------------------------------------------------------------
-        // MODO DE TESTE: Ignorando a API de Transactions / Mercado Pago
-        // -----------------------------------------------------------------
-        console.log(`[TESTE SUCCESS] Pedido #${createdOrderId} gravado com sucesso na tabela Order!`);
+        console.log(`[TESTE SUCCESS] Pedido #${createdOrderId} gravado com sucesso!`);
+        alert(`🎉 Pedido #${createdOrderId} concluído com sucesso!`);
 
-        alert(`🎉 Pedido #${createdOrderId} concluído com sucesso!\n(Modo de Teste: Pagamento fingido/aprovado automaticamente)`);
-
-        // Limpa o carrinho no Frontend
         cart = [];
         updateCartUI();
 
-        // Fecha eventuais modais abertos antes de mudar de página
         document.getElementById('cart-modal').style.display = 'none';
         document.getElementById('pix-modal').style.display = 'none';
 
-        // Redireciona para o histórico de pedidos para ver se ele aparece lá
         window.location.href = 'historico.html';
 
     } catch (e) {
         console.error("[ERRO NO TESTE]:", e);
-        alert("Erro ao tentar salvar o pedido na tabela Order: " + e.message);
+        alert("Erro ao tentar salvar o pedido: " + e.message);
     }
 }
 
-// =================================================================
-// ATUALIZADO: toggleModal agora chama a carga de endereços ao abrir
-// =================================================================
 function toggleModal(id, show) {
     document.getElementById(id).style.display = show ? 'block' : 'none';
     if (id === 'cart-modal' && show) {
         renderCartItems();
-        loadAddressesToSelect(); // Chamada inserida aqui
+        loadAddressesToSelect(); 
     }
 }
 
@@ -351,12 +372,13 @@ function renderCartItems() {
     `).join('');
 }
 
+// Limpa tanto o usuário quanto o token no logoff
 function logout() {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     window.location.reload();
 }
 
-// Inicializa a aplicação caso o grid exista na página
 if (document.getElementById('product-grid')) {
     initApp();
 }

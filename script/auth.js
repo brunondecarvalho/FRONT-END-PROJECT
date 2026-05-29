@@ -79,7 +79,7 @@ function checkAuth(role = null) {
     // LOGADO tentando acessar login/cadastro
 
     if (user && (isLoginPage || isRegisterPage)) {
-        window.location.href = 'index.html';
+        window.location.href = '../index.html';
         return null;
     }
 
@@ -90,7 +90,7 @@ function checkAuth(role = null) {
     if (role === 'admin' && userRole !== 'Admin') {
         alert('Acesso negado.');
 
-        window.location.href = 'index.html';
+        window.location.href = '../index.html';
 
         return null;
     }
@@ -159,7 +159,7 @@ async function login(email, password) {
         if (role === 'Admin') {
             window.location.href = 'admin.html';
         } else {
-            window.location.href = 'index.html';
+            window.location.href = '../index.html';
         }
 
     } catch (error) {

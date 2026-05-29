@@ -43,18 +43,35 @@ async function initApp() {
     // Tenta obter os dados salvos do usuário autenticado (definido no login)
     const user = JSON.parse(localStorage.getItem('user'));
 
+    const userInfoEl = document.getElementById('user-info');
+
     if (user) {
-        document.getElementById('user-info').innerHTML = `
-            <span style="font-weight:600;">Olá, ${user.name ? user.name.split(' ')[0] : 'Cliente'}</span>
-            <button onclick="window.location.href='historico.html'" style="background:none; border:none; color:var(--text-main); cursor:pointer; font-weight:bold; margin-left:15px; text-decoration:underline;">Pedidos</button>
-            <button onclick="window.location.href='cadastro-endereco.html'" style="background:none; border:none; color:var(--text-main); cursor:pointer; font-weight:bold; margin-left:15px; text-decoration:underline;">Endereço</button>
+        // CORREÇÃO/MELHORIA: Verifica se o usuário é Administrador pelo IdRole (visto no banco) ou pelo Token
+        const isAdmin = user.idRole === 2 || user.IdRole === 2 || (typeof getUserRole === 'function' && getUserRole() === 'Admin');
+
+        // Cria o botão da Visão Administrativa caso ele seja um Admin
+        const adminButton = isAdmin 
+            ? `<button onclick="window.location.href='pages/admin.html'" style="background:none; border:none; color:var(--text-main); cursor:pointer; font-weight:bold; margin-left:15px; text-decoration:underline;">Visão Administrativa</button>` 
+            : '';
+
+        userInfoEl.innerHTML = `
+            <span style="font-weight:600; color:var(--text-main);">Olá, ${user.name ? user.name.split(' ')[0] : 'Cliente'}</span>
+            ${adminButton} 
+            <button onclick="window.location.href='pages/historico.html'" style="background:none; border:none; color:var(--text-main); cursor:pointer; font-weight:bold; margin-left:15px; text-decoration:underline;">Pedidos</button>
+            <button onclick="window.location.href='pages/cadastro-endereco.html'" style="background:none; border:none; color:var(--text-main); cursor:pointer; font-weight:bold; margin-left:15px; text-decoration:underline;">Endereço</button>
             <button onclick="logout()" style="background:none; border:none; color:var(--primary-red); cursor:pointer; font-weight:bold; margin-left:15px;">Sair</button>
+        `;
+    } else {
+        // CASO NÃO ESTEJA LOGADO: Mantém a opção de ir para o Login
+        userInfoEl.innerHTML = `
+            <button onclick="window.location.href='pages/login.html'" style="background:var(--primary-red); color:white; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:0.9rem; transition: background 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='var(--primary-red)'">
+                👤 Entrar / Cadastrar
+            </button>
         `;
     }
 
     await fetchStoreConfig();
-    await fetchProducts(); // Dispara a busca no banco C#
-    setupEventListeners();
+    await fetchProducts();
 }
 
 function setupEventListeners() {
